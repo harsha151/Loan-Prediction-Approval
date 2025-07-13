@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Loan Prediction Approval</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f7f9fc;
+            color: #333;
+        }
+        header {
+            background-color: #4caf50;
+            color: white;
+            padding: 10px 20px;
+            text-align: center;
+        }
+        .container {
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        .form-group input, .form-group button {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        .form-group button {
+            background-color: #4caf50;
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        .form-group button:hover {
+            background-color: #45a049;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            font-size: 18px;
+            border-radius: 5px;
+        }
+        .result.success {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .result.error {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Loan Prediction Approval</h1>
+    </header>
+    <div class="container">
+        <!-- Manual Entry Form -->
+        <form id="manualEntryForm">
+            <h3>Manual Entry</h3>
+            <div class="form-group">
+                <label for="customerName">Customer Name:</label>
+                <input type="text" id="customerName" name="customerName" required>
+            </div>
+            <div class="form-group">
+                <label for="cibilScore">CIBIL Score (300-900):</label>
+                <input type="number" id="cibilScore" name="cibilScore" min="300" max="900" required>
+            </div>
+            <div class="form-group">
+                <label for="income">Monthly Income (₹):</label>
+                <input type="number" id="income" name="income" min="0" required>
+            </div>
+            <div class="form-group">
+                <button type="button" onclick="predictManual()">Predict Manually</button>
+            </div>
+        </form>
+
+        <!-- File Upload Form -->
+        <form id="fileUploadForm">
+            <h3>Upload File</h3>
+            <div class="form-group">
+                <label for="fileUpload">Upload File (CSV):</label>
+                <input type="file" id="fileUpload" accept=".csv" required>
+            </div>
+            <div class="form-group">
+                <button type="button" onclick="processFile()">Process File</button>
+            </div>
+        </form>
+
+        <!-- Weka and Power BI Links -->
+        <div class="form-group">
+            <button type="button" onclick="openWeka()">Open Weka App</button>
+        </div>
+        <div class="form-group">
+            <button type="button" onclick="openPowerBI()">Open Power BI</button>
+        </div>
+
+        <div id="result" class="result" style="display: none;"></div>
+    </div>
+
+    <script>
+        // Manual Entry Prediction
+        function predictManual() {
+            const customerName = document.getElementById('customerName').value.trim();
+            const cibilScore = parseInt(document.getElementById('cibilScore').value);
+            const income = parseInt(document.getElementById('income').value);
+            const resultDiv = document.getElementById('result');
+
+            if (!customerName || isNaN(cibilScore) || isNaN(income)) {
+                resultDiv.style.display = 'block';
+                resultDiv.className = 'result error';
+                resultDiv.innerText = 'Please provide valid inputs.';
+                return;
+            }
+
+            let message;
+            if (cibilScore < 600) {
+                message = `${customerName}: Loan Denied - Low CIBIL Score`;
+            } else if (income < 25000) {
+                message = `${customerName}: Loan Denied - Insufficient Income`;
+            } else {
+                message = `${customerName}: Loan Approved`;
+            }
+
+            resultDiv.style.display = 'block';
+            resultDiv.className = 'result success';
+            resultDiv.innerHTML = `<h3>Loan Prediction Result:</h3><p>${message}</p>`;
+        }
+
+        // File Upload and Prediction
+        function processFile() {
+            const fileInput = document.getElementById('fileUpload');
+            const file = fileInput.files[0];
+            const resultDiv = document.getElementById('result');
+
+            if (!file) {
+                resultDiv.style.display = 'block';
+                resultDiv.className = 'result error';
+                resultDiv.innerText = 'Please select a file.';
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const csvData = event.target.result;
+                const rows = csvData.split('\n').map(row => row.split(','));
+
+                if (rows.length < 2) {
+                    resultDiv.style.display = 'block';
+                    resultDiv.className = 'result error';
+                    resultDiv.innerText = 'Invalid file format: No data found.';
+                    return;
+                }
+
+                let output = '<h3>Loan Prediction Results:</h3><ul style="list-style: none; padding: 0;">';
+
+                rows.forEach((row, index) => {
+                    if (index === 0) return; // Skip header row
+                    const [customerName, cibilScoreStr, incomeStr] = row.map(cell => cell.trim());
+                    const cibilScore = parseInt(cibilScoreStr);
+                    const income = parseInt(incomeStr);
+
+                    if (!customerName || isNaN(cibilScore) || isNaN(income)) {
+                        output += `<li style="color: red;">Row ${index + 1}: Invalid data</li>`;
+                    } else if (cibilScore < 600) {
+                        output += `<li style="color: orange;">${customerName}: Loan Denied - Low CIBIL Score</li>`;
+                    } else if (income < 25000) {
+                        output += `<li style="color: orange;">${customerName}: Loan Denied - Insufficient Income</li>`;
+                    } else {
+                        output += `<li style="color: green;">${customerName}: Loan Approved</li>`;
+                    }
+                });
+
+                output += '</ul>';
+                resultDiv.style.display = 'block';
+                resultDiv.className = 'result success';
+                resultDiv.innerHTML = output;
+            };
+
+            reader.readAsText(file);
+        }
+
+        // Open Weka App
+        function openWeka() {
+            window.location.href = "weka://open";
+        }
+
+        // Open Power BI
+        function openPowerBI() {
+            window.location.href = "powerbi://open";
+        }
+    </script>
+</body>
+</html>
